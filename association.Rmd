@@ -1,0 +1,159 @@
+---
+title: "association analysis"
+author: "Quincy"
+date: "9/9/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+# Association Analysis
+
+## Context
+Create association rules that will allow us to identify relationships between variables in the dataset. We have been provided with a dataset that comprises of  groups of items that will be associated with others. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# We first we install the required arules library 
+#install.packages("arules")
+```
+
+
+```{r}
+# Loading the arules library
+library(arules)
+```
+
+
+# Load data
+
+```{r}
+path <- "http://bit.ly/SupermarketDatasetII"
+
+super <- read.transactions(path, sep = ",")
+super
+```
+
+```{r}
+# Verifying the object's class
+# This should show us transactions as the type of data that we will need
+
+class(super)
+```
+
+
+```{r}
+# Previewing our first 5 transactions
+inspect(super[1:5])
+```
+
+
+
+
+```{r}
+# Generating a summary of the supermarket dataset
+# This would give us some information such as the most purchased items, 
+# distribution of the item sets (no. of items purchased in each transaction), etc.
+
+summary(super)
+```
+
+We can see that mineral water leads in sales followed by eggs,sphagetti,french fries and chocolate.
+
+
+
+```{r}
+# Exploring the frequency of some articles 
+# i.e. transacations ranging from 8 to 10 and performing 
+# some operation in percentage terms of the total transactions 
+
+itemFrequency(super[, 8:10],type = "absolute")
+round(itemFrequency(super[, 8:10],type = "relative")*100,2)
+```
+
+```{r}
+# Displaying top 10 most common items in the transactions dataset 
+# and the items whose relative importance is at least 10%
+# 
+par(mfrow = c(1, 2))
+
+# plot the frequency of items
+itemFrequencyPlot(super, topN = 10,col="darkgreen")
+itemFrequencyPlot(super, support = 0.1,col="darkred")
+```
+
+```{r}
+# Building a model based on association rules 
+# using the apriori function 
+# We use Min Support as 0.001 and confidence as 0.8
+
+rules <- apriori (super, parameter = list(supp = 0.001, conf = 0.8))
+rules
+```
+
+Since we built the model using 0.001 Min support and confidence as 0.8 we obtained 74 rules.
+
+```{r}
+# we will see what happens if we increase the support or lower the confidence level
+
+# Building a apriori model with Min Support as 0.002 and confidence as 0.8.
+rules2 <- apriori (super,parameter = list(supp = 0.002, conf = 0.8)) 
+rules2
+
+```
+This gives us 2 rules which is too little.
+
+```{r}
+# Building apriori model with Min Support as 0.002 and confidence as 0.6.
+rules3 <- apriori (super, parameter = list(supp = 0.001, conf = 0.6)) 
+rules3
+```
+This gives us 545 rules which is okay but we will use rules.
+
+```{r}
+# More statistical information such as support, lift and confidence is also provided.
+
+summary(rules)
+```
+
+Most rules have 3 and 4 items though some rules do have upto 5 and 6.
+
+```{r}
+# Observing rules built in our model i.e. first 5 model rules
+
+inspect(rules[1:5])
+```
+
+If someone buys frozen smoothie and spinach they are 89% likely to buy mineral water.
+
+```{r}
+# Ordering the rules by a criteria such as the level of confidence
+# then looking at the first five rules.
+
+rules<-sort(rules, by="confidence", decreasing=TRUE)
+inspect(rules[1:5])
+```
+
+The first four rules have a confidence of 100%.
+
+```{r}
+# If we're interested in making a promotion relating to the sale of milk, 
+# we could create a subset of rules concerning these products 
+# This would tell us the items that the customers bought before purchasing mineral
+milk <- subset(rules, subset = rhs %pin% "milk")
+# Then order by confidence
+milk <-sort(milk, by="count", decreasing=TRUE)
+inspect(milk[1:5])
+```
+ 
+- meatballs,whole wheat pasta had been in 10 baskets.
+
+- black tea,frozen smoothie had been in 9 baskets.
+
+- cake,meatballs,mineral water had been in 8 baskets.
+
+- escalope,hot dogs,mineral water had been in 8 baskets.
+
+- burgers,ground beef,olive oil had been in 8 baskets.

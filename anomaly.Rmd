@@ -1,0 +1,130 @@
+---
+title: "Anomaly Detection"
+author: "Quincy"
+date: "9/9/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+# Anomaly Detection
+
+## Context
+We are to check whether there are any anomalies in the given sales dataset. The objective of this task being fraud detection.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Load data
+
+```{r}
+# Installing anomalize package
+#install.packages("anomalize",repos = "http://cran.us.r-project.org")
+```
+
+```{r}
+# Load tidyverse and anomalize
+library(tidyverse)
+library(anomalize)
+```
+
+```{r}
+# read data
+forecast <- read.csv('http://bit.ly/CarreFourSalesDataset')
+View(forecast)
+```
+
+```{r}
+# checking the structure of our data
+str(forecast)
+```
+
+```{r}
+# checking the shape
+dim(forecast)
+```
+
+We have 1000 observations and 2 variables.
+
+```{r}
+# converting variables to our preferred format
+forecast$Date <- as.Date(forecast$Date, "%m/%d/%Y")
+```
+
+```{r}
+str(forecast)
+```
+
+### Visualization
+
+```{r}
+# visualizing our sales
+hist(forecast$Sales,col="blue")
+```
+```{r}
+# Sales distribution over time
+library(ggplot2)
+ggplot(data = forecast, aes(x = Date, y = Sales)) +
+      geom_bar(stat = "identity", fill = "green") +
+      labs(title = "Sales distribution",
+           x = "Date", y = "Sales(ksh)")
+```
+
+```{r}
+# Load libraries
+library(tibbletime)
+```
+
+```{r}
+# Ordering the data by Date
+forecast = forecast %>% arrange(Date)
+head(forecast)
+```
+```{r}
+# Since our data has many records per day, 
+# We get the average per day, so that the data
+forecast = aggregate(Sales ~ Date , forecast , mean)
+head(forecast)
+```
+
+```{r}
+# Converting data frame to a tibble time (tbl_time)
+# tbl_time have a time index that contains information about which column 
+# should be used for time-based subsetting and other time-based manipulation,
+forecast= tbl_time(forecast, Date)
+class(forecast)
+```
+
+We now use the following functions to detect and visualize anomalies; 
+
+The default values for time series decompose are method = "stl", 
+which is just seasonal decomposition using a Loess smoother (refer to stats::stl()). 
+
+The frequency and trend parameters are automatically set based on the time scale (or periodicity)of the time series using tibbletime based function under the hood.
+
+time_decompose() - this function would help with time series decomposition.
+
+anomalize() - We perform anomaly detection on the decomposed data using the remainder column through the use of the anomalize() function which procides 3 new columns; remainder_l1” (lower limit), “remainder_l2” (upper limit), and “anomaly” (Yes/No Flag).
+
+The default method is method = "iqr", which is fast and relatively accurate at detecting anomalies. 
+
+The alpha parameter is by default set to alpha = 0.05, but can be adjusted to increase or decrease the height of the anomaly bands, making it more difficult or less difficult for data to be anomalous. 
+
+The max_anoms parameter is by default set to a maximum of max_anoms = 0.2 for 20% of data that can be anomalous. 
+
+time_recompose()- We create the lower and upper bounds around the observed values through the use of the time_recompose() function, which recomposes the lower and upper bounds of the anomalies around the observed values.
+ 
+We create new columns created: recomposed_l1(lower limit) and recomposed_l2 (upper limit).
+
+plot_anomalies() - we now plot using plot_anomaly_decomposition() to visualize out data.
+
+```{r}
+forecast %>%
+    time_decompose(Sales) %>%
+    anomalize(remainder) %>%
+    time_recompose() %>%
+    plot_anomalies(time_recomposed = TRUE, ncol = 3, alpha_dots = 0.5)
+```
+
+Our data has no anomalies.

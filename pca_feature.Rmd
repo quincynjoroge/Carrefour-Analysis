@@ -1,0 +1,319 @@
+---
+title: "Supermarket"
+author: "Quincy"
+date: "9/9/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+# SUPERMAKET ANALYSIS
+
+## CONTEXT
+Carrefour is a retail-focused global corporation based in France. It has operations in a number of countries, including the United Arab Emirates, Australia, Brazil, and, closer to home, Kenya.
+
+As a data analyst at Carrefour Kenya, I'm now working on a project to tell the marketing department about the most effective marketing methods for generating the greatest sales (total price including tax).
+
+## EXPERIMENTAL DESIGN
+
+The project is separated into four sections, each of which examines a recent marketing dataset using a variety of unsupervised learning approaches before making suggestions based on your findings.
+
+Part 1: Reducing Dimensionality
+
+PCA is used to reduce the dataset to a low-dimensional dataset in this section of the research.
+
+Part 2: Choosing Features
+
+This part calls on you to apply unsupervised learning methods to perform feature selection.
+
+Association Rules (Part 3)
+
+This section will require you to develop association rules in order to identify relationships between variables in the dataset.
+
+Part 4: Detecting Anomalies
+
+We will check if there are any.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load data
+```{r}
+# Loading our data
+supermarket = read.csv("http://bit.ly/CarreFourDataset")
+```
+
+```{r}
+# Viewing the top of our data
+head(supermarket)
+```
+```{r}
+# Viewing the bottom of our data
+tail(supermarket)
+```
+
+```{r}
+# checking the shape of our data
+dim(supermarket)
+```
+
+Our data has 1000 observations and 16 variables.
+
+```{r}
+# checking the structure of our data
+str(supermarket)
+```
+
+Our data has 16 character variables and 8 numerical variables.
+
+### Data cleaning
+
+```{r}
+# checking for missing values
+colSums(is.na(supermarket))
+```
+
+Our dataset ha no missing values.
+
+```{r}
+# checking for duplicate values
+colSums(supermarket[duplicated(supermarket),])
+```
+
+Our data set has no duplicate values.
+
+```{r}
+# lower case of the column names
+names(supermarket) <- tolower(names(supermarket))
+names(supermarket)
+```
+
+Our column names have been lowered for easier manipulation.
+
+```{r}
+# checking for outliers
+# detect outliers by use ofsome descriptive statistics, 
+# and in particular with the minimum and maximum.
+summary(supermarket)
+```
+
+According to the summary data, no outliers are present. We will, however, continue to look into the matter in order to assess and confirm our findings.
+
+```{r}
+# checking for outliers
+# load tidy verse
+library(tidyverse)
+
+num <- select_if(supermarket, is.numeric)# selecting numerical columns only
+boxplot(num,
+main = "Outliers in Numerical Columns",
+xlab = "Columns",
+col = "maroon",
+border = "pink")
+```
+
+
+There are some outliers on cogs,Total column,Tax and Ratings.
+
+```{r}
+# Tax and gross income columns seem to have the same values 
+# Let's confirm this
+all(supermarket$tax == supermarket$gross.income)
+```
+
+The two columns have equal values.
+
+- Gross income includes all income you receive that isn't explicitly exempt from taxation. 
+
+- Taxable income is the portion of your gross income that's actually subject to taxation.
+
+- We can see from the data that the tax column is important because when we add our tax to the cost of goods sold (i.e. the cogs column), we get the final price shown in the Total column. The gross income column is another name for the total column.
+
+- We will therefore drop the gross income column.
+
+```{r}
+# Removing gross income column
+supermarket <- supermarket[-c(14)]
+```
+
+
+```{r}
+# Lets check the columns
+names(supermarket)
+
+# gross income has been removed
+```
+
+We change some of the columns with the character datatype to numerical datatype
+
+
+```{r}
+supermarket$branch <- as.integer(as.factor(supermarket$branch))
+supermarket$customer.type <- as.integer(as.factor(supermarket$customer.type))
+supermarket$gender <- as.integer(as.factor(supermarket$gender))
+supermarket$product.line <-as.integer(as.factor(supermarket$product.line))
+supermarket$payment <-as.integer(as.factor(supermarket$payment))
+```
+
+```{r}
+# checking to see if our variables have been converted
+str(supermarket)
+```
+
+
+```{r}
+# checking for correlation of our variables
+data.num<-select_if(supermarket,is.numeric)
+data.num
+data.cor = cor(data.num)
+library(corrplot)
+corrplot(data.cor, type = 'lower')
+```
+
+### PCA
+
+Let's select numerical variables
+
+```{r}
+head(supermarket)
+```
+
+
+```{r}
+# Importing the library dplyr
+library(dplyr)
+df <- select_if(supermarket, is.numeric)
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+df <- df[,c(-1,-2,-3,-4,-8,-10)]
+head(df)
+```
+
+We removed the categorical columns as well as the gross.margin.percentage column because it has a constant value throughout for all the rows.
+
+```{r}
+# passing df to the prcomp()
+# set two arguments, center and scale,to be TRUE then preview our object with summary
+
+super.pca <- prcomp(df, center = TRUE, scale. = T)
+summary(super.pca)
+```
+
+We have obtained 6 principal components.
+
+PC1 explains 65% of the total variance and PC2 ~17% of the variance.
+
+```{r}
+# let's have a look at the PCA object
+str(super.pca)
+```
+
+
+```{r}
+# Let's plot our pca
+# Installing our ggbiplot visualisation package
+# 
+library(devtools)
+install_github("vqv/ggbiplot")
+```
+
+```{r}
+# Then Loading our ggbiplot library
+#  
+library(ggbiplot)
+ggbiplot(super.pca)
+
+```
+
+```{r}
+# Adding more detail to the plot, we provide arguments rownames as labels
+# 
+ggbiplot(super.pca, labels=rownames(supermarket), obs.scale = 1, var.scale = 1)
+```
+
+This plot is not really visually explainable.
+
+Having performed PCA using this dataset, if we were to build a classification model 
+the rating,unit price,quantity and cogs would be significant variables as seen in our PCA analysis.
+
+## Feature Selection
+
+```{r}
+# reload our dataset
+super<- read.csv('http://bit.ly/CarreFourDataset')
+head(super)
+```
+
+```{r}
+# lower case of the column names
+names(super) <- tolower(names(super))
+names(super)
+```
+
+
+```{r}
+# changing data types
+super$branch <- as.integer(as.factor(super$branch))
+super$customer.type <- as.integer(as.factor(super$customer.type))
+super$gender <- as.integer(as.factor(super$gender))
+super$product.line <-as.integer(as.factor(super$product.line))
+super$payment <-as.integer(as.factor(super$payment))
+```
+
+
+```{r}
+# subsetting our data excluding some variables
+super_f <- subset( super, select = -c(`invoice.id`  , date, time,`gross.margin.percentage`))
+names(super_f)
+```
+
+```{r}
+# Loading our libraries
+library(caret)
+library(corrplot)
+```
+
+```{r}
+# Calculating the correlation matrix
+correlationMatrix <- cor(super_f)
+```
+
+
+```{r}
+# Find attributes that are highly correlated
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+
+```
+
+
+```{r}
+# Highly correlated attributes
+highlyCorrelated
+
+names(super_f[,highlyCorrelated])
+```
+
+Cogs,total and tax have a high correlation to each other.
+
+```{r}
+# removing the variables with a higher correlation 
+# and comparing the results graphically 
+
+# Removing Redundant Features 
+
+Dataset <-super_f[-highlyCorrelated]
+```
+
+```{r}
+# our graphical comparison
+par(mfrow = c(1, 2))
+corrplot(correlationMatrix, order = "hclust")
+corrplot(cor(Dataset), order = "hclust")
+```
+
+We have removed irrelevant and unnecessary variables.
