@@ -73,7 +73,7 @@ Our data has 16 character variables and 8 numerical variables.
 colSums(is.na(supermarket))
 ```
 
-Our dataset ha no missing values.
+Our dataset has no missing values.
 
 ```{r}
 # checking for duplicate values
@@ -106,14 +106,19 @@ library(tidyverse)
 
 num <- select_if(supermarket, is.numeric)# selecting numerical columns only
 boxplot(num,
-main = "Outliers in Numerical Columns",
-xlab = "Columns",
-col = "maroon",
-border = "pink")
+        main = "Outliers in Numerical Columns",
+        xlab = "Columns",
+        col = "maroon",
+        border = "pink")
 ```
 
 
 There are some outliers on cogs,Total column,Tax and Ratings.
+
+The outliers are found in the third quartile,implying they are found in the higher ranges of the variables.
+
+The outliers will not be removed as they may give us more information.
+
 
 ```{r}
 # Tax and gross income columns seem to have the same values 
@@ -144,22 +149,180 @@ names(supermarket)
 # gross income has been removed
 ```
 
-We change some of the columns with the character datatype to numerical datatype
-
-
-```{r}
-supermarket$branch <- as.integer(as.factor(supermarket$branch))
-supermarket$customer.type <- as.integer(as.factor(supermarket$customer.type))
-supermarket$gender <- as.integer(as.factor(supermarket$gender))
-supermarket$product.line <-as.integer(as.factor(supermarket$product.line))
-supermarket$payment <-as.integer(as.factor(supermarket$payment))
-```
 
 ```{r}
 # checking to see if our variables have been converted
 str(supermarket)
 ```
 
+# EDA
+
+### UNIVARIATE ANALYSIS
+
+When using univariate approaches, you just look at one variable at a time.
+
+The following are examples of univariate analysis:
+
+- Mean, Median, and Mode are three measures of central tendancy.
+
+- Dispersion measures include the minimum, maximum, range, quartiles, variance, and standard deviation.
+
+- Other factors to consider are skewness and kurtosis.
+
+- Histogram, Box plots, Bar plots, and Kernel density plots are examples of univariate graphs.
+
+```{r}
+# convert column product line to a factor
+supermarket$product.line <- as.factor(supermarket$product.line)
+# convert the other character to facors
+supermarket$branch <- as.factor(supermarket$branch)
+supermarket$customer.type <- as.factor(supermarket$customer.type)
+supermarket$gender <- as.factor(supermarket$gender)
+supermarket$payment <- as.factor(supermarket$payment)
+```
+
+
+```{r}
+# rename factors so they can fit in barchart
+# We will rename:
+# Electronic accessories <- EA
+# Fashion Accessories <- FA
+# Food and Beverage <- FB
+# Health and Beauty <- HB
+# Home and lifestyle <- HL
+# Sports and travel <- ST
+levels(supermarket$product.line) <- c("EA","FA","FB","HB","HL","ST")
+
+```
+
+
+
+```{r}
+# Using the method describe() gives more measures of dispersion
+# describe columns
+library(psych)
+describe(supermarket)
+```
+
+```{r}
+# Create histogram for our categorical variable
+for(i in 2:5){
+  counts <- table(supermarket[,i])
+  names <- names(supermarket)[i]
+  barplot(counts,main = names,col = heat.colors(20))
+}
+```
+
+
+```{r}
+supermarket %>%
+  select(branch,customer.type,gender,product.line,payment) %>%
+  summary()
+```
+
+
+- The column branch has three different values(A,B,C)
+
+- There are two categories of customers, as shown by the two distinct values for customer type(Member,Normal).
+
+- Member clients made up 50.1% of the total, while Normal consumers made up 49.9%.
+
+- There are two types of genders. The majority of the clients were of gender Female (50.1%), with the remaining customers being of gender Male(49.9%).
+
+- There are six separate features in the product line(**Electronic accessories,Fashion accesories,Food and beverages,Home and lifestyle,Health and beauty,Sports and travel**), with Fashion accessories having 17.8% more values.
+
+- The cheapest unit cost 10.08, while the most expensive was 99.96.
+
+- The payment mechanism comprised three separate features(**Cash,Credit card,Ewallet**), with feature Ewallet accounting for 34.5% of all transactions.
+
+### Bivariate Analysis
+
+Two variables are analyzed to see if there is a relationship between them.
+
+```{r}
+# Let's plot scatter plots
+plot(unit.price~ tax, dat = supermarket, 
+     col = "blue",
+     main = "Unit price vs Tax")
+```
+As the unit price increases the tax increases this shows a positve linear relationship.
+
+```{r}
+# convert column product line to a factor
+supermarket$product.line <- as.factor(supermarket$product.line)
+```
+
+```{r}
+# rename factors so they can fit in barchart
+# We will rename:
+# Electronic accessories <- EA
+# Fashion Accessories <- FA
+# Food and Beverage <- FB
+# Health and Beauty <- HB
+# Home and lifestyle <- HL
+# Sports and travel <- ST
+levels(supermarket$product.line) <- c("EA","FA","FB","HB","HL","ST")
+```
+
+```{r}
+# Create a stacked bar chart showing relationship between gender and productline
+counts <- table(supermarket$gender,supermarket$product.line)
+barplot(counts,
+        main= "Bar chart showing gender by product line",
+        xlab = "product line",
+        ylab = "Frequency",
+        col = c("cyan","green"),
+        legend = rownames(counts),
+        beside = TRUE)
+```
+
+- Fashion accessories are the most popular item.
+
+- When compared to other products, fashion accessories are purchased by the majority of women.
+
+- When it comes to health and beauty items, males are more likely to buy than women.
+
+
+```{r}
+# create a chart showing gender vs customer type
+library(tidyverse)
+
+supermarket %>% 
+    group_by(customer.type) %>% 
+    count(gender) %>% 
+    mutate(prop = n/sum(n)) %>% 
+    ggplot(aes(x = customer.type, y = prop)) +
+    geom_col(aes(fill = gender), position = "dodge") +
+    geom_text(aes(label = scales::percent(prop), 
+                  y = prop, 
+                  group = gender),
+              position = position_dodge(width = 0.9),
+              vjust = 1.5)
+```
+
+
+- The majority of ladies are members by 52.1%, whilst the majority of males are regular clients by 51.9%.
+
+```{r}
+# Create a stacked bar chart showing relationship between product line and payment type
+supermarket %>% 
+    group_by(product.line) %>% 
+    count(payment) %>% 
+    mutate(prop = n/sum(n)) %>% 
+    ggplot(aes(x = product.line, y = prop)) +
+    geom_col(aes(fill = payment), position = "dodge") +
+    geom_text(aes(label = scales::percent(prop), 
+                  y = prop, 
+                  group = payment),
+              position = position_dodge(width = 0.9),
+              vjust = 1.5)
+```
+
+- For the Electronic accessories we can see that most customers pay via cash by 41.765% and Sports and travel by 35.542%.
+
+- Ewallet is mostly used in the purchase of fashion accessories(36.517%) and Health and lifestyle products(40%).
+
+- Credit cards are mostly used in the purchase of food and beverages by 35.057%.
 
 ```{r}
 # checking for correlation of our variables
@@ -169,6 +332,18 @@ data.cor = cor(data.num)
 library(corrplot)
 corrplot(data.cor, type = 'lower')
 ```
+
+
+We change some of the columns with the character datatype to numerical datatype
+
+```{r}
+supermarket$branch <- as.integer(as.factor(supermarket$branch))
+supermarket$customer.type <- as.integer(as.factor(supermarket$customer.type))
+supermarket$gender <- as.integer(as.factor(supermarket$gender))
+supermarket$product.line <-as.integer(as.factor(supermarket$product.line))
+supermarket$payment <-as.integer(as.factor(supermarket$payment))
+```
+
 
 ### PCA
 
